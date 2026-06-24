@@ -1,0 +1,214 @@
+$color-primario: #3534bf;       
+$color-fondo: #e0f4ff;
+$color-tarjeta: #ffffff;          
+$color-texto: #1f2937;          
+$color-exito: #22c55e;          
+$color-alerta: #f59e0b;         
+$color-peligro: #ef4444;        
+$color-naranja: #f97316;        
+$color-accion: #373a3f;         
+$color-borde: #d1d5db;          
+$color-fondo-input: #ffffff;    
+$color-fondo-readonly: #f9fafb; 
+$color-gris-claro: #f3f4f6;
+
+$fuente-base: sans-serif;
+$radio-borde: 8px;
+$espaciado-base: 2rem;
+
+@mixin flex-centro {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin tarjeta-base {
+  border: 1px solid $color-borde;
+  border-radius: $radio-borde;
+  padding: $espaciado-base;
+}
+
+@mixin boton-base {
+  padding: 12px 24px;
+  border-radius: $radio-borde;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+  border: none;
+
+  &:hover {
+    transform: scale(1.02);
+  }
+}
+
+.pagina-contacto {
+  background-color: $color-fondo;
+  color: $color-texto;
+  padding: 1rem 2rem; 
+  font-family: $fuente-base;
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+
+  .cabecera-contacto {
+    margin-bottom: 1rem; 
+    
+    .btn-volver {
+      @include boton-base;
+      background-color: $color-gris-claro;
+      color: $color-texto;
+      padding: 8px 16px; 
+      border: 1px solid $color-borde; 
+    }
+  }
+
+  .soporte-urgente {
+    text-align: center;
+    margin-bottom: 1rem; 
+
+    h2 {
+      margin: 0; 
+      font-size: 1.2rem;
+    }
+
+    .botones-urgencia {
+      @include flex-centro;
+      gap: 15px; 
+      margin-top: 10px;
+
+      button {
+        @include boton-base;
+        padding: 10px 20px; 
+        color: rgb(255, 255, 255);
+      }
+      
+      .btn-llamar { background-color: $color-accion; } 
+      .btn-chat { background-color: $color-accion; }   
+    }
+  }
+
+  .formulario-soporte {
+    @include tarjeta-base;
+    background-color: $color-tarjeta; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    padding: 1.5rem;
+
+    .grid-formulario {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); 
+      gap: 1.5rem; 
+
+      @media (max-width: 1023px) { grid-template-columns: 1fr 1fr; }
+      @media (max-width: 767px) { grid-template-columns: 1fr; }
+
+      fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+
+        legend {
+          font-weight: bold;
+          margin-bottom: 10px; 
+          font-size: 1rem;
+        }
+
+        .campo {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 1rem; 
+
+          label {
+            margin-bottom: 5px; 
+            font-size: 0.85rem;
+          }
+
+          input, select, textarea {
+            padding: 8px; 
+            border: 1px solid $color-borde;
+            border-radius: 6px;
+            font-family: inherit;
+            background-color: $color-fondo-input;
+          }
+
+          input[readOnly] { 
+            background-color: $color-fondo-readonly; 
+            color: #6b7280; 
+          } 
+        }
+      }
+
+      .columna-urgencia .opciones-urgencia {
+        display: flex;
+        flex-direction: column;
+        gap: 10px; 
+
+        .radio-btn {
+          display: block;
+          padding: 10px; 
+          border: 1px solid transparent; 
+          border-radius: $radio-borde;
+          text-align: center;
+          cursor: pointer;
+          font-weight: bold;
+          color: white; 
+          transition: opacity 0.2s;
+
+          input { display: none; }
+          &:hover { opacity: 0.8; }
+          
+          &:nth-child(1) { background-color: $color-exito; }  
+          &:nth-child(2) { background-color: $color-alerta; } 
+          &:nth-child(3) { background-color: $color-peligro; } 
+        }
+      }
+
+      .footer-formulario {
+        grid-column: 1 / -1; 
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end; 
+        margin-top: 0.5rem; 
+        gap: 2rem;
+
+        @media (max-width: 767px) {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .historial-reportes {
+          flex: 1;
+          border: 1px solid $color-borde;
+          padding: 1rem;
+          background-color: $color-gris-claro;
+          
+          h3 { margin-top: 0; margin-bottom: 10px; font-size: 0.95rem; }
+
+          table {
+            width: 100%;
+            text-align: left;
+            border-collapse: collapse;
+            font-size: 0.9rem; 
+
+            th, td {
+              padding: 6px; 
+              border-bottom: 1px solid $color-borde;
+            }
+          }
+        }
+
+        .btn-enviar {
+          @include boton-base;
+          background-color: $color-accion; 
+          color: white;
+          padding: 12px 30px; 
+          font-size: 1rem;
+
+          &:hover { background-color: darken(#373a3f, 10%); }
+        }
+      }
+    }
+  }
+}
