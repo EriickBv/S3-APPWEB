@@ -1,36 +1,75 @@
 import { useState } from 'react';
-import Mensaje from '../Mensaje';
+import { useNavigate } from 'react-router-dom';
+import { procesarRetiro } from '../../api/api';
 
 const Paso3Respaldo = ({ datos, setDatos, volver }) => {
+  const navigate = useNavigate();
   const [esTercero, setEsTercero] = useState(datos.esTercero);
-  const [codigoEscaneado, setCodigoEscaneado] = useState(datos.codigoEscaneado || '');
+  const [codigoEscaneado, setCodigoEscaneado] = useState(datos.boletaDisplayId || '');
   const [fotoCarnet, setFotoCarnet] = useState(datos.fotoCarnet);
-  
   const [mensajeConfig, setMensajeConfig] = useState(null);
   const [procesoExitoso, setProcesoExitoso] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
-  const handleFinalizarProceso = (e) => {
+  const handleFinalizarProceso = async (e) => {
     e.preventDefault();
+
     if (!codigoEscaneado.trim()) {
-      setMensajeConfig({ tipo: 'error', texto: 'Debe escanear el QR o ingresar el código de la boleta.' });
+      setMensajeConfig({
+        tipo: 'error',
+        texto: 'Debe escanear el QR o ingresar el código de la boleta.',
+      });
       return;
     }
+
     if (esTercero && !fotoCarnet) {
-      setMensajeConfig({ tipo: 'error', texto: 'Para retiros por terceros, es obligatorio adjuntar la foto del carnet.' });
+      setMensajeConfig({
+        tipo: 'error',
+        texto: 'Para retiros por terceros, es obligatorio adjuntar la foto del carnet.',
+      });
       return;
     }
-    setDatos(prev => ({
-      ...prev,
-      codigoEscaneado: codigoEscaneado,
-      esTercero: esTercero,
-      fotoCarnet: fotoCarnet
+
+    setEnviando(true);
+
+    const productosPayload = (datos.productosEntregados || []).map((p) => ({
+      id: p.id,
+      estado_entrega: p.checked ? 'ENTREGADO' : p.problema ? 'CON_PROBLEMA' : 'PENDIENTE',
+      problema: p.problema || '',
     }));
-    setMensajeConfig({ 
-      tipo: 'exito', 
-      texto: 'Identidad verificada con éxito', 
-      subtexto: esTercero ? 'Código escaneado y carnet registrado. Retiro autorizado.' : 'Código escaneado validado. Retiro autorizado para titular.' 
-    });
-    setProcesoExitoso(true);
+
+    try {
+      await procesarRetiro({
+        boleta_id: datos.boletaDbId,
+        es_tercero: esTercero,
+        productos: productosPayload,
+        foto_respaldo: fotoCarnet || null,
+      });
+
+      setDatos((prev) => ({
+        ...prev,
+        esTercero,
+        fotoCarnet,
+      }));
+
+      localStorage.setItem('detalle_boleta_id', String(datos.boletaDbId));
+
+      setMensajeConfig({
+        tipo: 'exito',
+        texto: 'Identidad verificada con éxito',
+        subtexto: esTercero
+          ? 'Código escaneado y carnet registrado. Retiro autorizado.'
+          : 'Código escaneado validado. Retiro autorizado para titular.',
+      });
+      setProcesoExitoso(true);
+    } catch (err) {
+      setMensajeConfig({
+        tipo: 'error',
+        texto: err.message || 'Error al procesar el retiro. Intente nuevamente.',
+      });
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const cerrarPopupError = () => setMensajeConfig(null);
@@ -41,11 +80,10 @@ const Paso3Respaldo = ({ datos, setDatos, volver }) => {
       <h3>Respaldo</h3>
 
       <form onSubmit={handleFinalizarProceso} className="form-respaldo">
-        
         <div className="form-group">
           <label htmlFor="tipoRetirante">¿Quién realiza el retiro?</label>
-          <select 
-            id="tipoRetirante" 
+          <select
+            id="tipoRetirante"
             value={esTercero ? 'tercero' : 'titular'}
             onChange={(e) => {
               setEsTercero(e.target.value === 'tercero');
@@ -59,21 +97,23 @@ const Paso3Respaldo = ({ datos, setDatos, volver }) => {
 
         <div className="form-group">
           <label htmlFor="codigoBoleta">Escanear QR o código boleta</label>
-          <input 
-            type="text" 
-            id="codigoBoleta" 
-            value={codigoEscaneado} 
-            onChange={(e) => setCodigoEscaneado(e.target.value)} 
-            placeholder="Ingrese el código escaneado..." 
+          <input
+            type="text"
+            id="codigoBoleta"
+            value={codigoEscaneado}
+            onChange={(e) => setCodigoEscaneado(e.target.value)}
+            placeholder="Ingrese el código escaneado..."
           />
         </div>
 
         {esTercero && (
           <div className="form-group campo-dinamico-foto">
-            <label htmlFor="fotoId">Adicionalmente: Foto de carnet del que retira (en caso de un tercero)</label>
-            <input 
-              type="file" 
-              id="fotoId" 
+            <label htmlFor="fotoId">
+              Adicionalmente: Foto de carnet del que retira (en caso de un tercero)
+            </label>
+            <input
+              type="file"
+              id="fotoId"
               accept="image/*"
               onChange={(e) => setFotoCarnet(e.target.files[0])}
             />
@@ -84,8 +124,8 @@ const Paso3Respaldo = ({ datos, setDatos, volver }) => {
           <button type="button" onClick={volver} className="btn-nav">
             Atrás
           </button>
-          <button type="submit" className="btn-finalizar">
-            Finalizar Retiro
+          <button type="submit" className="btn-finalizar" disabled={enviando}>
+            {enviando ? 'Procesando...' : 'Finalizar Retiro'}
           </button>
         </div>
       </form>
@@ -93,15 +133,14 @@ const Paso3Respaldo = ({ datos, setDatos, volver }) => {
       {mensajeConfig && (
         <div className="overlay-modal">
           <div className={`popup-validacion-modal ${mensajeConfig.tipo}`}>
-            
             <h3>{mensajeConfig.texto}</h3>
             {mensajeConfig.subtexto && <p>{mensajeConfig.subtexto}</p>}
-            
+
             <div className="popup-botones">
               {procesoExitoso ? (
-                <button 
-                  type="button" 
-                  onClick={() => window.location.href = '/details'} 
+                <button
+                  type="button"
+                  onClick={() => navigate('/details')}
                   className="btn-nav"
                 >
                   Confirmar y ver detalles
@@ -112,7 +151,6 @@ const Paso3Respaldo = ({ datos, setDatos, volver }) => {
                 </button>
               )}
             </div>
-            
           </div>
         </div>
       )}

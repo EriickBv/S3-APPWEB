@@ -1,27 +1,51 @@
 import { useState } from 'react';
 import ButtonNav from '../ButtonNav';
+import { buscarBoletaPorRut } from '../../api/api';
 
 const Paso1Rut = ({ datos, setDatos, alCompletar }) => {
   const [rutInput, setRutInput] = useState(datos.rut);
   const [mensajeConfig, setMensajeConfig] = useState(null);
   const [esValido, setEsValido] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
-  const handleValidar = (e) => {
+  const handleValidar = async (e) => {
     e.preventDefault();
 
     if (!rutInput.trim()) {
-      setMensajeConfig({ tipo: 'error', texto: 'El rut ingresado no registra retiros pendientes' });
+      setMensajeConfig({ tipo: 'error', texto: 'Debes ingresar un RUT.' });
       setEsValido(false);
       return;
     }
 
-    setDatos((prev) => ({
-      ...prev,
-      rut: rutInput,
-      clienteNombre: 'Carlos Mendoza'
-    }));
-    setMensajeConfig({ tipo: 'exito', texto: 'Cliente válido', subtexto: 'Carlos Mendoza' });
-    setEsValido(true);
+    setCargando(true);
+    try {
+      const boleta = await buscarBoletaPorRut(rutInput.trim());
+      const displayId = `BOL-${String(boleta.id).padStart(5, '0')}`;
+
+      setDatos((prev) => ({
+        ...prev,
+        rut: rutInput.trim(),
+        clienteNombre: boleta.nombre_cliente,
+        boletaDbId: boleta.id,
+        boletaDisplayId: displayId,
+        boletaProductos: boleta.productos,
+      }));
+
+      setMensajeConfig({
+        tipo: 'exito',
+        texto: 'Cliente válido',
+        subtexto: boleta.nombre_cliente,
+      });
+      setEsValido(true);
+    } catch (err) {
+      setMensajeConfig({
+        tipo: 'error',
+        texto: err.message || 'El RUT ingresado no registra retiros pendientes.',
+      });
+      setEsValido(false);
+    } finally {
+      setCargando(false);
+    }
   };
 
   const cerrarPopup = () => setMensajeConfig(null);
@@ -29,32 +53,33 @@ const Paso1Rut = ({ datos, setDatos, alCompletar }) => {
   return (
     <article className="paso-container">
       <h2>Ingresar Retiro</h2>
-      
+
       <form onSubmit={handleValidar} className="form-rut">
         <div className="form-group">
           <label htmlFor="rutCliente">Rut</label>
-          <input 
-            type="text" 
-            id="rutCliente" 
-            value={rutInput} 
-            onChange={(e) => setRutInput(e.target.value)} 
+          <input
+            type="text"
+            id="rutCliente"
+            value={rutInput}
+            onChange={(e) => setRutInput(e.target.value)}
             placeholder="Rut de Cliente"
           />
         </div>
-        
+
         <div className="botones-accion">
-          <ButtonNav ruta={'/dashboard'} texto={'Cancelar'} />
-          <button type="submit" className="btn-validar">Validar</button>
+          <ButtonNav ruta="/dashboard" texto="Cancelar" />
+          <button type="submit" className="btn-validar" disabled={cargando}>
+            {cargando ? 'Validando...' : 'Validar'}
+          </button>
         </div>
       </form>
 
       {mensajeConfig && (
         <div className="overlay-modal">
           <div className={`popup-validacion-modal ${mensajeConfig.tipo}`}>
-            
             <h3>{mensajeConfig.texto}</h3>
             {mensajeConfig.subtexto && <p>{mensajeConfig.subtexto}</p>}
-            
+
             <div className="popup-botones">
               {esValido ? (
                 <button type="button" onClick={alCompletar} className="btn-nav">
@@ -66,7 +91,6 @@ const Paso1Rut = ({ datos, setDatos, alCompletar }) => {
                 </button>
               )}
             </div>
-            
           </div>
         </div>
       )}

@@ -1,69 +1,82 @@
 import { useState, useEffect } from 'react';
 import Mensaje from '../components/Mensaje';
 import ButtonNav from '../components/ButtonNav';
-import { useNavigate } from 'react-router-dom';
-import '../styles/Contact.scss'; 
+import { crearIncidencia, getIncidencias } from '../api/api';
+import '../styles/Contact.scss';
 
 const Contact = () => {
-  
   useEffect(() => {
-    document.title = "s2 | Contacto";
+    document.title = 's2 | Contacto';
+    cargarHistorial();
   }, []);
+
+  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
   const [formData, setFormData] = useState({
-    operador: 'Juan Pérez', 
-    sede: 'Sede Central',
+    operador: usuario.nombre || 'Operador',
+    sede: usuario.sede || 'Sede Central',
     fechaHora: new Date().toLocaleString(),
     categoria: '',
     descripcion: '',
-    urgencia: 'Baja'
+    urgencia: 'Baja',
   });
 
   const [mensajeData, setMensajeData] = useState({ tipo: '', texto: '' });
+  const [historial, setHistorial] = useState([]);
+  const [enviando, setEnviando] = useState(false);
+
+  const cargarHistorial = async () => {
+    const data = await getIncidencias();
+    setHistorial(data);
+  };
+
+  const urgenciaMap = { Baja: 'BAJA', Media: 'MEDIA', Alta: 'ALTA' };
+
+  const categoriaLabel = {
+    hardware: 'Falla Física o Daño de Equipo',
+    software: 'Problema de Software o Configuración',
+    solicitud: 'Solicitud de Nuevo Equipo/Accesorio',
+    extravio: 'Reporte de Robo o Extravío',
+    plataforma: 'Error en la Plataforma',
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (formData.categoria === '' || formData.descripcion.trim() === '') {
-      setMensajeData({
-        tipo: 'error',
-        texto: 'Por favor, selecciona una categoría y describe el problema.'
-      });
+
+    if (!formData.categoria || !formData.descripcion.trim()) {
+      setMensajeData({ tipo: 'error', texto: 'Por favor, selecciona una categoría y describe el problema.' });
       return;
     }
 
-    setMensajeData({
-      tipo: 'exito',
-      texto: 'Reporte enviado correctamente. El equipo lo revisará pronto.'
-    });
+    setEnviando(true);
+    try {
+      const descripcionCompleta = `[${categoriaLabel[formData.categoria] || formData.categoria}] ${formData.descripcion}`;
 
-    setFormData({
-      ...formData,
-      categoria: '',
-      descripcion: '',
-      urgencia: 'Baja'
-    });
+      await crearIncidencia({
+        id_sede: formData.sede,
+        descripcion: descripcionCompleta,
+        nivel_urgencia: urgenciaMap[formData.urgencia] || 'BAJA',
+      });
+
+      setMensajeData({ tipo: 'exito', texto: 'Reporte enviado correctamente. El equipo lo revisará pronto.' });
+      setFormData((prev) => ({ ...prev, categoria: '', descripcion: '', urgencia: 'Baja' }));
+      cargarHistorial();
+    } catch (err) {
+      setMensajeData({ tipo: 'error', texto: err.message || 'Error al enviar el reporte.' });
+    } finally {
+      setEnviando(false);
+    }
   };
-
-  const historialEstatico = [
-    { id: 1, fecha: 'Hoy 10:00', categoria: 'Falla Física o Daño de Equipo', estado: 'Resuelto' },
-    { id: 2, fecha: 'Ayer 15:30', categoria: 'Error en la Plataforma', estado: 'En progreso' },
-    { id: 3, fecha: 'Lunes 09:15', categoria: 'Solicitud de Nuevo Equipo/Accesorio', estado: 'Pendiente' },
-    { id: 4, fecha: 'Viernes 16:45', categoria: 'Problema de Software o Configuración', estado: 'Resuelto' }
-  ];
 
   return (
     <main className="pagina-contacto">
       <div className="cabecera-contacto">
-        <ButtonNav 
-          ruta="/dashboard" 
-          texto="← Volver al Dashboard" 
-          claseExtra="btn-volver"
-        />
+        <ButtonNav ruta="/dashboard" texto="← Volver al Dashboard" claseExtra="btn-volver" />
       </div>
 
       <section className="soporte-urgente">
@@ -78,7 +91,6 @@ const Contact = () => {
         <Mensaje tipo={mensajeData.tipo} texto={mensajeData.texto} />
 
         <form onSubmit={handleSubmit} className="grid-formulario">
-          
           <fieldset className="columna-datos">
             <legend>Datos del operador</legend>
             <div className="campo">
@@ -117,25 +129,25 @@ const Contact = () => {
                 value={formData.descripcion}
                 onChange={handleChange}
                 placeholder="Describa el problema aquí..."
-              ></textarea>
+              />
             </div>
           </fieldset>
 
           <fieldset className="columna-urgencia">
             <legend>Nivel de urgencia</legend>
             <div className="opciones-urgencia">
-              <label className={`radio-btn ${formData.urgencia === 'Baja' ? 'activo' : ''}`}>
-                <input type="radio" name="urgencia" value="Baja" checked={formData.urgencia === 'Baja'} onChange={handleChange} />
-                Consulta (Baja)
-              </label>
-              <label className={`radio-btn ${formData.urgencia === 'Media' ? 'activo' : ''}`}>
-                <input type="radio" name="urgencia" value="Media" checked={formData.urgencia === 'Media'} onChange={handleChange} />
-                Parcial (Media)
-              </label>
-              <label className={`radio-btn ${formData.urgencia === 'Alta' ? 'activo' : ''}`}>
-                <input type="radio" name="urgencia" value="Alta" checked={formData.urgencia === 'Alta'} onChange={handleChange} />
-                Urgente (Alta)
-              </label>
+              {['Baja', 'Media', 'Alta'].map((nivel) => (
+                <label key={nivel} className={`radio-btn ${formData.urgencia === nivel ? 'activo' : ''}`}>
+                  <input
+                    type="radio"
+                    name="urgencia"
+                    value={nivel}
+                    checked={formData.urgencia === nivel}
+                    onChange={handleChange}
+                  />
+                  {nivel === 'Baja' ? 'Consulta (Baja)' : nivel === 'Media' ? 'Parcial (Media)' : 'Urgente (Alta)'}
+                </label>
+              ))}
             </div>
           </fieldset>
 
@@ -146,23 +158,27 @@ const Contact = () => {
                 <thead>
                   <tr>
                     <th>Fecha</th>
-                    <th>Categoría</th>
+                    <th>Descripción</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historialEstatico.map((reporte) => (
-                    <tr key={reporte.id}>
-                      <td>{reporte.fecha}</td>
-                      <td>{reporte.categoria}</td>
-                      <td>{reporte.estado}</td>
+                  {historial.length === 0 && (
+                    <tr><td colSpan={3}>Sin reportes recientes.</td></tr>
+                  )}
+                  {historial.map((inc) => (
+                    <tr key={inc.id}>
+                      <td>{inc.fecha}</td>
+                      <td>{inc.descripcion}</td>
+                      <td>{inc.estado}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </article>
-
-            <button type="submit" className="btn-enviar">Enviar Reporte</button>
+            <button type="submit" className="btn-enviar" disabled={enviando}>
+              {enviando ? 'Enviando...' : 'Enviar Reporte'}
+            </button>
           </div>
         </form>
       </section>

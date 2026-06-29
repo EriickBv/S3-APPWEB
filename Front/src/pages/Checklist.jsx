@@ -6,18 +6,21 @@ import '../styles/Checklist.scss';
 
 const Checklist = () => {
   useEffect(() => {
-      document.title = "s2 | Checklist";
-    }, []);
-  
+    document.title = 's2 | Checklist';
+  }, []);
+
   const [pasoActual, setPasoActual] = useState(1);
   const [datosRetiro, setDatosRetiro] = useState({
     rut: '',
     clienteNombre: '',
-    boletaId: '',
-    correoRespaldo: '',
+    boletaDbId: null,
+    boletaDisplayId: '',
+    boletaProductos: [],
+    productosEntregados: [],
     esTercero: false,
-    fotoCarnet: null
+    fotoCarnet: null,
   });
+
   const avanzarPaso = () => setPasoActual((prev) => prev + 1);
   const retrocederPaso = () => setPasoActual((prev) => prev - 1);
 
@@ -30,26 +33,26 @@ const Checklist = () => {
 
       <section className="checklist-content-card">
         {pasoActual === 1 && (
-          <Paso1Rut 
-            datos={datosRetiro} 
-            setDatos={setDatosRetiro} 
-            alCompletar={avanzarPaso} 
+          <Paso1Rut
+            datos={datosRetiro}
+            setDatos={setDatosRetiro}
+            alCompletar={avanzarPaso}
           />
         )}
 
         {pasoActual === 2 && (
-          <Paso2Boleta 
-            datos={datosRetiro} 
-            setDatos={setDatosRetiro} 
-            alCompletar={avanzarPaso} 
+          <Paso2Boleta
+            datos={datosRetiro}
+            setDatos={setDatosRetiro}
+            alCompletar={avanzarPaso}
             volver={retrocederPaso}
           />
         )}
 
         {pasoActual === 3 && (
-          <Paso3Respaldo 
-            datos={datosRetiro} 
-            setDatos={setDatosRetiro} 
+          <Paso3Respaldo
+            datos={datosRetiro}
+            setDatos={setDatosRetiro}
             volver={retrocederPaso}
           />
         )}
